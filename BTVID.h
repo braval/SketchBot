@@ -183,6 +183,7 @@ extern int	dumpPCIStatusAndCommand(void);
 
  */
 
+/*Test*/
 /*#define BTVID_MMIO_ADDR		0x08000000 */
 #define BTVID_MMIO_ADDR		0xfca00008 	/*Om- modified*/
 
