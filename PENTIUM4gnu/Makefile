@@ -32,8 +32,8 @@ else
 MODE_DIR := NonDebug
 endif
 OBJ_DIR := .
-WS_ROOT_DIR := Z:/RTES/workspace
-PRJ_ROOT_DIR := $(WS_ROOT_DIR)/SketchBot
+WS_ROOT_DIR := C:/
+PRJ_ROOT_DIR := $(WS_ROOT_DIR)//SketchBot
 
 
 
