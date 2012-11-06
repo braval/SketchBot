@@ -5993,14 +5993,14 @@
         </mapAttribute>
     </attributes>
     <buildtargets>
-        <buildtarget buildtool="Linker" name="project" passed="false" targetname="project">
+        <buildtarget buildtool="Linker" name="SketchBot" passed="false" targetname="SketchBot">
             <contents>
-                <buildtargetreference name="/project/project_partialImage"/>
+                <buildtargetreference name="/SketchBot/SketchBot_partialImage"/>
             </contents>
         </buildtarget>
-        <buildtarget buildtool="Partial Image Linker" name="project_partialImage" passed="true" targetname="project_partialImage">
+        <buildtarget buildtool="Partial Image Linker" name="SketchBot_partialImage" passed="true" targetname="SketchBot_partialImage">
             <contents>
-                <folder name="/project" recursive="true"/>
+                <folder name="/SketchBot" recursive="true"/>
             </contents>
         </buildtarget>
     </buildtargets>
