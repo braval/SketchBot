@@ -137,7 +137,7 @@ extern int	dumpPCIStatusAndCommand(void);
 #define PCI_DEVICE_ID_INTEL_82371SB_0	0x7000
 #define PCI_DEVICE_ID_INTEL_82371AB_0	0x7110
 /* 82801AA LPC (Low Pin Count) interface is where PCI Interrupt registers are found.. this is Dev ID 0x2410 */
-#define PCI_DEVICE_ID_INTEL_82801AA	0x24d0 
+#define PCI_DEVICE_ID_INTEL_82801AA	0x244e 
 
 
 
@@ -150,9 +150,9 @@ extern int	dumpPCIStatusAndCommand(void);
 #define PCI_CFG_PCI_CTL 		0x50
 
 /* Southbridge */
-#define PCI_CFG_IRQ_ROUTING		0x60
-#define PCI_CFG_APIC_ADDR 		0x80
-#define PCI_CFG_ARB_CTL 		0x4f
+#define PCI_CFG_IRQ_ROUTING			0x60
+#define PCI_CFG_APIC_ADDR 			0x80
+#define PCI_CFG_ARB_CTL 			0x4f
 #define PCI_CFG_LATENCY_CTL 		0x82
 
 

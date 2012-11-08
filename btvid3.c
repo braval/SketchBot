@@ -131,7 +131,7 @@
 #include "intLib.h"
 #include "vmLib.h"   /* added to support */
 #include "iv.h"
-
+#include "taskLib.h"
 
 /* VxWorks 5.4 PCI driver interface includes */
 #include "drv/pci/pciConfigLib.h"
@@ -239,7 +239,7 @@ DEVTYPE_S *FindNextDevTypeInList(unsigned int uiVendorID, unsigned int uiDeviceI
 		 	!psDevType->bFound )
 		{
 			psDevType->bFound = TRUE;
-			printf("Found Device Type: %s\n",psDevType->pDevDescString);
+			logMsg("Found Device Type: %s\n",psDevType->pDevDescString);
 			return psDevType;
 		}
 		psDevType++;
@@ -281,26 +281,26 @@ STATUS reportDevFoundStatus(void)
 
 	if(PCI_DEV[NORTH_BRIDGE].Found != OK)
 	{
-		printf("Warning: Northbridge not found!!!\n");
+		logMsg("Warning: Northbridge not found!!!\n");
 		stReturn = ERROR;
 	}
 	
 	if(PCI_DEV[SOUTH_BRIDGE].Found != OK)
 	{
-		printf("Warning: Southbridge not found!!!\n");
+		logMsg("Warning: Southbridge not found!!!\n");
 		
 		stReturn = ERROR;
 	}
 	
 	if(PCI_DEV[CAPTURE_VIDEO_CARD1].Found != OK)
 	{
-		printf("Error: Capture card not found!!!\n");
+		logMsg("Error: Capture card not found!!!\n");
 		stReturn = ERROR;
 	}
 
 	if(PCI_DEV[CAPTURE_VIDEO_CARD2].Found != OK && stReturn != ERROR)
 	{
-		printf("Note: Only one capture card found\n");
+		logMsg("Note: Only one capture card found\n");
 	}
 	
 	return stReturn;
@@ -322,7 +322,7 @@ unsigned char FillPCIDev(void)
 	{
 		if (pciConfigLibInit (PCI_MECHANISM_1, 0xCF8, 0xCFC, 0) != OK)
 		{
-			printf("PCI lib config error\n");
+			logMsg("PCI lib config error\n");
 			      return (ERROR);
 		}
 	}
@@ -690,7 +690,7 @@ void write_save_buffer(int bo)
   wvEvent(1,0,0);	
 
   fd = open("/tgtsvr/testframe.ppm", O_RDWR|O_CREAT, 0644);
-
+  logMsg("Opned file to write\n", 0,0,0,0,0) ;
   write(fd,"P6\n",3);
   write(fd,"#test\n",6);
   write(fd,"320 240\n",8);
@@ -708,10 +708,12 @@ void write_save_buffer(int bo)
       pWriteBuf++;
       *pWriteBuf =savebuffbyteptr[0];
       pWriteBuf++;
+     logMsg("%d\n", savebuffbyteptr[0]);
 
       savebuffbyteptr+=4;
     }
     write(fd,SaveBuffer,3*320*240); /* write everything at once, speed it up a bit */
+    logMsg("if loop in write complete \n", 0,0,0,0,0) ;
 
   }
   else
@@ -751,7 +753,7 @@ UINT check_buffers(int fsize)
     }
   }
 
-  printf("OR of all pixels = %d\n", test);
+  logMsg("OR of all pixels = %d\n", test);
 
   return test;
 
@@ -1089,7 +1091,7 @@ int configure_ntsc(int fsize)
 
   */
   PCI_READ(TIMING_GEN_REG,0x0,&testval);
-  printf("Timing Gen Ctl Reg = 0x%x\n", testval);
+  logMsg("Timing Gen Ctl Reg = 0x%x\n", testval);
 
   PCI_WRITE(TIMING_GEN_REG,0x0,0x00000000);
 
@@ -1321,7 +1323,7 @@ int configure_ntsc(int fsize)
   /* Reduce frame rate from max of 30 frames/sec or 60 fields/sec */
   PCI_WRITE(TEMP_DECIMATION_REG,0x0,0x00000000);  /* reset */
   PCI_WRITE(TEMP_DECIMATION_REG,0x0,0x00000000);  /* set */
-
+ return 0;
 }
 
 
@@ -1353,6 +1355,7 @@ void disable_capture(void)
 void enable_capture(void)
 {
   vdfc_capture();
+  logMsg("Leaving Capture enable\n");
 }
 
 
@@ -1368,7 +1371,7 @@ void set_brightness(int b)
   else
     bright = hb - 0x7f;
 
-  printf("Brightness was %d\n", bright);
+  logMsg("Brightness was %d\n", bright);
 
   if(b > 255)
     b = 255;
@@ -1399,7 +1402,7 @@ void set_contrast(int c)
   else
     contrast = hc - 0x7f;
 
-  printf("Contrast was %d\n", contrast);
+  logMsg("Contrast was %d\n", contrast);
 
   if(c > 255)
     c = 255;
@@ -1464,7 +1467,7 @@ void load_test_mc(int mc)
   }
   else
   {
-    printf("Bad test MC\n");
+    logMsg("Bad test MC\n");
   }
 }
 
@@ -1539,6 +1542,7 @@ void start_acq(void)
 
    */
   PCI_WRITE(DMA_CTL_REG,0x0,0x0000000F);
+  logMsg("Leaving Acg Started\n");
 }
 
 
@@ -1643,7 +1647,7 @@ void pci_inta_isr(int param)
     PCI_READ(BTVID_MMIO_ADDR,0x0,&last_dstatus);
   }
 
-
+  /*logMsg("Leaving ISR\n");*/
 }
 
 
@@ -1685,8 +1689,6 @@ void full_reset(void)
 
 }
 
-
-
 void activate(int fsize)
 {
   test_status();
@@ -1698,16 +1700,17 @@ void activate(int fsize)
   configure_ntsc(fsize);
   logMsg("Configured NTSC\n",0,0,0,0,0,0);
 
-  set_mux(1);
+  set_mux(3);
   logMsg("Set mux\n",0,0,0,0,0,0);
 
   load_frame_mc(fsize);
-  printf("Loaded MC\n");
+  logMsg("Loaded MC\n");
   clear_buffers(fsize);
   enable_capture();
   start_acq();
 
   test_status();
+  logMsg("Leaving Activate\n");
 }
 
 
@@ -1748,7 +1751,7 @@ void btvid_drvr(void)
     /* Await a activate command here */
     semTake(frameRdy, WAIT_FOREVER);
     frame_rdy_cnt++;
-    
+    logMsg("Frame ready count %d \n",frame_rdy_cnt,0,0,0,0,0);
     if(acq_type == NTSC_320_X_240)
       bcopy(&(frame_buffer[current_frame][0]), save_buffer, (76800*4));
 
@@ -1776,6 +1779,7 @@ void start_video_report(void (*pFnNewFrameRcvd)(unsigned char *))
 	{
 		pglobFnNewFrameRcvd = 0; /* zero out the new frame received function */
 	}
+	logMsg("Leaving start_video_report\n",0,0,0,0,0,0);
 }
 	
 
@@ -1796,12 +1800,16 @@ void start_video(void)
 
  	/******** Initialization and Test ********/
 	intel_pci_config();
-
+	logMsg("Leaving intel_pci_config \n");
+	
 	btvid_controller_config();
 
+	logMsg("Leaving btvid_controller_config \n");
+	
 	test_status();
 
 	btvid_tid = taskSpawn("tBtvid", 10, 0, (1024*8), (FUNCPTR) btvid_drvr, 0,0,0,0,0,0,0,0,0,0);
+	logMsg("Spawned btvid_drvr  \n");
 
 }
 
@@ -1816,6 +1824,7 @@ int reset_status(void)
   PCI_WRITE(INT_STATUS_REG,0x0,0xFFFFFFFF);
 
   test_status();
+  return 0;	
 }
 
 
@@ -1901,6 +1910,8 @@ int test_status(void)
 
   PCI_READ(DMA_RISC_PC_REG,0x0,&testval);
   logMsg("mmio DMA PC = 0x%x\n", testval,0,0,0,0,0,0);
+  
+  return 0;	
 }
 
 
@@ -1922,7 +1933,7 @@ void set_mux(int mux)
   /* Select NTSC source */
   PCI_WRITE(INPUT_REG,0x0,testval);
 
-  printf("Setting INPUT_REG = 0x%x\n", testval);
+  logMsg("Setting INPUT_REG = 0x%x\n", testval);
 
 }
 
@@ -1955,10 +1966,10 @@ int intel_pci_config(void)
 			
 			/* Set latency timer value to 0.. no guaranteed time slice */
 			pciConfigInByte(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_LATENCY_TIMER, &byte);
-			printf("Intel NB controller PCI latency timer = 0x%x\n", byte);
+			logMsg("Intel NB controller PCI latency timer = 0x%x\n", byte);
 
 			pciConfigOutByte(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_LATENCY_TIMER, 0x00);
-			printf("Modified Intel NB controller PCI latency timer = 0x%x\n", 0x00);
+			logMsg("Modified Intel NB controller PCI latency timer = 0x%x\n", 0x00);
 
  			/* MAE Bit in PCICFG register - see P22.. this bit hardwired 1 in 82441FX */
 			
@@ -1970,16 +1981,16 @@ int intel_pci_config(void)
 			
 
 			pciConfigInByte(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_PCI_CTL, &byte);
-  			printf("Intel NB controller PCI concurrency enable = 0x%x\n", byte);
+  			logMsg("Intel NB controller PCI concurrency enable = 0x%x\n", byte);
 
 			pciConfigOutByte(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_PCI_CTL, 0x00);
-			printf("Modified Intel NB controller PCI concurrency enable = 0x%x\n", byte);
+			logMsg("Modified Intel NB controller PCI concurrency enable = 0x%x\n", byte);
 
 			pciConfigInByte(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_LATENCY_TIMER, &byte);
-			printf("Intel NB controller PCI latency timer = 0x%x\n", byte);
+			logMsg("Intel NB controller PCI latency timer = 0x%x\n", byte);
 
 			pciConfigOutByte(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_LATENCY_TIMER, 0x00);
-			printf("Modified Intel NB controller PCI latency timer = 0x%x\n", byte);
+			logMsg("Modified Intel NB controller PCI latency timer = 0x%x\n", byte);
 
 			/* Enable the North Bridge memory controller to allow memory access
 			by another bus master.
@@ -1989,23 +2000,23 @@ int intel_pci_config(void)
 			*/
 
 			pciConfigInWord(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_COMMAND, &testval);
-			printf("Intel NB controller PCI Cmd Reg = 0x%x\n", testval);
+			logMsg("Intel NB controller PCI Cmd Reg = 0x%x\n", testval);
 
 			pciConfigOutWord(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_COMMAND, 0x0002);
 
 			pciConfigInWord(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_COMMAND, &testval);
-			printf("Modified Intel NB controller PCI Cmd Reg = 0x%x\n", testval);
+			logMsg("Modified Intel NB controller PCI Cmd Reg = 0x%x\n", testval);
 	
 			/* See P26.. Set Extended CPU-toPIIX4 PHLDA# Signalling enable */	
 			
 			pciConfigInByte(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_ARB_CTL, &byte);
-			printf("Intel NB controller PCI ARB CTL = 0x%x\n", byte);
+			logMsg("Intel NB controller PCI ARB CTL = 0x%x\n", byte);
 			pciConfigOutByte(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_ARB_CTL, 0x80);
-			printf("PCI 2.1 Compliant Intel NB controller PCI ARB CTL = 0x%x\n", byte);		
+			logMsg("PCI 2.1 Compliant Intel NB controller PCI ARB CTL = 0x%x\n", byte);		
 			break;
 
 		default:
-			printf("!!!Error!!! Northbridge undefined!!!!\n");
+			logMsg("!!!Error!!! Northbridge undefined!!!!\n");
 			break;
 	}
 
@@ -2020,37 +2031,37 @@ int intel_pci_config(void)
 	{
 		case PCI_DEVICE_ID_INTEL_82801AA:
 
-			printf("Detected Southbridge 82801AA\n");
+			logMsg("Detected Southbridge 82801AA\n");
 			
 
 /*				
 			pciConfigInLong(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_IRQ_ROUTING, &longword);
-			printf("Intel SB controller IRQ Routing Reg = 0x%x\n", longword);
+			logMsg("Intel SB controller IRQ Routing Reg = 0x%x\n", longword);
 
 			longword = (((longword & 0x70FFFFFF) | ((BT878INT)<<24)) ); // NOTE: IRQEN SET TO ZERO TO ROUTE TO ISA INT
 			pciConfigOutLong(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_IRQ_ROUTING, longword);
 			pciConfigInLong(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_IRQ_ROUTING, &longword);
-			printf("Modified Intel SB controller IRQ Routing Reg = 0x%x\n", longword);
+			logMsg("Modified Intel SB controller IRQ Routing Reg = 0x%x\n", longword);
 */
 			pciConfigInLong(pciBusNo, pciDevNo, pciFuncNo,PCI_CFG_GEN_CNTL, &longword);
 
 			if(longword & PCI_CFG_GEN_CNTL_APIC_EN_BIT)
 			{
-				printf("APIC_EN bit already set\n");
+				logMsg("APIC_EN bit already set\n");
 			}
 			else
 			{
-				printf("APIC_EN bit not set\n");
+				logMsg("APIC_EN bit not set\n");
 				longword |= PCI_CFG_GEN_CNTL_APIC_EN_BIT;
 				pciConfigOutLong(pciBusNo, pciDevNo, pciFuncNo,PCI_CFG_GEN_CNTL, longword);
 				pciConfigInLong(pciBusNo, pciDevNo, pciFuncNo,PCI_CFG_GEN_CNTL, &longword);
 				if(longword & PCI_CFG_GEN_CNTL_APIC_EN_BIT)
 				{
-					printf("APIC_EN bit set successfully\n");
+					logMsg("APIC_EN bit set successfully\n");
 				}
 				else
 				{
-					printf("ERROR!!! Could not set APIC_EN!!!\n");		
+					logMsg("ERROR!!! Could not set APIC_EN!!!\n");		
 				}
 
 				
@@ -2066,14 +2077,14 @@ int intel_pci_config(void)
 			/* Mask in 0x03 to enable Passive Release and Delayed Transaction.
 			 * This will make the sb function the same way the 82371FB responded
 			 * * Most likely not necessary, according to Sam 12-1-04  */
-			printf("Detected Southbridge 82371SB\n");
+			logMsg("Detected Southbridge 82371SB\n");
 			pciConfigInByte(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_LATENCY_CTL, &byte);
-			printf("Intel SB controller latency control  = 0x%x\n", byte);
+			logMsg("Intel SB controller latency control  = 0x%x\n", byte);
 			byte |= 0x03;
 			pciConfigOutByte(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_LATENCY_CTL, byte);
-			printf("PCI 2.1 Compliant Intel SB controller latency control  = 0x%x\n", byte);
+			logMsg("PCI 2.1 Compliant Intel SB controller latency control  = 0x%x\n", byte);
 			pciConfigInByte(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_LATENCY_CTL, &byte);
-			printf("Intel SB controller latency control  = 0x%x\n\n", byte);
+			logMsg("Intel SB controller latency control  = 0x%x\n\n", byte);
 
 			/* IRQ Routing Setup */
 
@@ -2084,12 +2095,12 @@ int intel_pci_config(void)
 			/* Set PIRQRC register to map INTA to The IRQ specified by BT878INT and enable INTA
 			 * See P36 */
 			pciConfigInLong(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_IRQ_ROUTING, &longword);
-			printf("Intel SB controller IRQ Routing Reg = 0x%x\n", longword);
+			logMsg("Intel SB controller IRQ Routing Reg = 0x%x\n", longword);
 
 			longword = (((longword & 0x70FFFFFF) | ((BT878INT)<<24)) | 0x80000000);
 			pciConfigOutLong(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_IRQ_ROUTING, longword);
 			pciConfigInLong(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_IRQ_ROUTING, &longword);
-			printf("Modified Intel SB controller IRQ Routing Reg = 0x%x\n", longword);
+			logMsg("Modified Intel SB controller IRQ Routing Reg = 0x%x\n", longword);
 			
 			break;
 		
@@ -2099,37 +2110,37 @@ int intel_pci_config(void)
 			/* Mask in 0x03 to enable Passive Release and Delayed Transaction.
 			 * This will make the sb function the same way the 82371FB responded
 			 * Most likely not necessary, according to Sam 12-1-04 */
-			printf("Detected Southbridge 82371AB\n");
+			logMsg("Detected Southbridge 82371AB\n");
 			pciConfigInByte(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_LATENCY_CTL, &byte);
-			printf("Intel SB controller latency control  = 0x%x\n", byte);
+			logMsg("Intel SB controller latency control  = 0x%x\n", byte);
 			byte |= 0x03;
 			pciConfigOutByte(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_LATENCY_CTL, byte);
-			printf("PCI 2.1 Compliant Intel SB controller latency control  = 0x%x\n", byte);
+			logMsg("PCI 2.1 Compliant Intel SB controller latency control  = 0x%x\n", byte);
 
 			/* Set PIRQRC register to map INTA to The IRQ specified by BT878INT and enable INTA
 			 * See P36 */
 
 			pciConfigInLong(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_IRQ_ROUTING, &longword);
-			printf("Intel SB controller IRQ Routing Reg = 0x%x\n", longword);
+			logMsg("Intel SB controller IRQ Routing Reg = 0x%x\n", longword);
 
 			longword = (0x00808080 | ((BT878INT)<<24));
 
 			pciConfigOutLong(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_IRQ_ROUTING, longword);
   
 			pciConfigInLong(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_IRQ_ROUTING, &longword);
-			printf("Modified Intel SB controller IRQ Routing Reg = 0x%x\n", longword);
+			logMsg("Modified Intel SB controller IRQ Routing Reg = 0x%x\n", longword);
 
 			pciConfigInByte(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_APIC_ADDR, &byte);
-			printf("Intel SB controller APIC Addr Reg = 0x%x\n", byte);	
+			logMsg("Intel SB controller APIC Addr Reg = 0x%x\n", byte);	
 			
 			break;
 
 		default:
-			printf("!!!Error!!!Southbridge Not defined!!!!");
+			logMsg("!!!Error!!!Southbridge Not defined!!!!");
 			break;
 
 	}
-
+	return 0;	
 }
 
 
@@ -2164,7 +2175,7 @@ int btvid_controller_config(void)
   {
       pciConfigInLong(pciBusNo, pciDevNo, pciFuncNo, ix, &testval);
       
-      printf("BAR %d testval=0x%x before writing 0xffffffff's \n", ((ix/4)-4), testval);
+      logMsg("BAR %d testval=0x%x before writing 0xffffffff's \n", ((ix/4)-4), testval);
 
       /* Write all f's and read back value */
 
@@ -2172,44 +2183,44 @@ int btvid_controller_config(void)
       pciConfigInLong(pciBusNo, pciDevNo, pciFuncNo, ix, &testval);
       
       	if(!BAR_IS_IMPLEMENTED(testval)) {
-        	printf("BAR %d not implemented\n", ((ix/4)-4));
+        	logMsg("BAR %d not implemented\n", ((ix/4)-4));
 	} else {
 		if(BAR_IS_MEM_ADDRESS_DECODER(testval)) {
-			printf("BAR %d is a Memory Address Decoder\n", ((ix/4)-4));
-			printf("Configuring BAR %d for address 0x%x\n", ix, BTVID_MMIO_ADDR);
+			logMsg("BAR %d is a Memory Address Decoder\n", ((ix/4)-4));
+			logMsg("Configuring BAR %d for address 0x%x\n", ix, BTVID_MMIO_ADDR);
         		pciConfigOutLong(pciBusNo, pciDevNo, pciFuncNo, ix, BTVID_MMIO_ADDR);
-			printf("BAR configured \n");
+			logMsg("BAR configured \n");
 			
 			if(BAR_IS_32_BIT_DECODER(testval))
-				printf("BAR %d is a 32-Bit Decoder \n", ((ix/4)-4));
+				logMsg("BAR %d is a 32-Bit Decoder \n", ((ix/4)-4));
 			else if(BAR_IS_64_BIT_DECODER(testval))	
-				printf("BAR %d is a 64-Bit Decoder \n", ((ix/4)-4));
+				logMsg("BAR %d is a 64-Bit Decoder \n", ((ix/4)-4));
 			else
-				printf("BAR %d memory width is undefined \n", ((ix/4)-4));
+				logMsg("BAR %d memory width is undefined \n", ((ix/4)-4));
 
 			if(BAR_IS_PREFETCHABLE(testval))
-				printf("BAR %d address space is prefetachable \n", ((ix/4)-4));
+				logMsg("BAR %d address space is prefetachable \n", ((ix/4)-4));
 			
 		} else if(BAR_IS_IO_ADDRESS_DECODER(testval)) {
-			printf("BAR %d is an IO Address Decoder \n", ((ix/4)-4));
+			logMsg("BAR %d is an IO Address Decoder \n", ((ix/4)-4));
 		} else {
-			printf("BAR %d is niether an IO Address Decoder or an Memory Address Decoder (error probably) \n", ((ix/4)-4));	
+			logMsg("BAR %d is niether an IO Address Decoder or an Memory Address Decoder (error probably) \n", ((ix/4)-4));	
 		}
 		
-	printf("BAR %d decodes a space 2^%i big\n", ((ix/4)-4), 
+	logMsg("BAR %d decodes a space 2^%i big\n", ((ix/4)-4), 
 		baseAddressRegisterSizeOfDecodeSpace(testval));
 	}
 
-	printf("\n\n");
+	logMsg("\n\n");
   }
 
   /* Set the INTA vector */
   pciConfigInByte(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_DEV_INT_LINE, &irq);
-  printf("Found Bt878 configured for IRQ line: %d\n", irq);
+  logMsg("Found Bt878 configured for IRQ line: %d\n", irq);
   irq = BT878INT;
   pciConfigOutByte(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_DEV_INT_LINE, irq);
   pciConfigInByte(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_DEV_INT_LINE, &irq);
-  printf("Updated Bt878 IRQ line to: 0x%x\n", irq);
+  logMsg("Updated Bt878 IRQ line to: 0x%x\n", irq);
 
   /* Configure Cache Line Size Register -- Write-Command 
 
@@ -2220,21 +2231,21 @@ int btvid_controller_config(void)
 
   /* Configure Latency Timer */
   pciConfigInByte(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_LATENCY_TIMER, &byte);
-  printf("Bt878 Allowable PCI bus latency = 0x%x\n", byte);
+  logMsg("Bt878 Allowable PCI bus latency = 0x%x\n", byte);
   pciConfigInByte(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_MIN_GRANT, &byte);
-  printf("Bt878 PCI bus min grant = 0x%x\n", byte);
+  logMsg("Bt878 PCI bus min grant = 0x%x\n", byte);
   pciConfigInByte(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_MAX_LATENCY, &byte);
-  printf("Bt878 PCI bus max latency = 0x%x\n", byte);
+  logMsg("Bt878 PCI bus max latency = 0x%x\n", byte);
 
   pciConfigOutByte(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_LATENCY_TIMER, 0xFF);
 
   pciConfigInByte(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_LATENCY_TIMER, &byte);
-  printf("Modified Bt878 Allowable PCI bus latency = 0x%x\n", byte);
+  logMsg("Modified Bt878 Allowable PCI bus latency = 0x%x\n", byte);
 
 
   /* Enable the device's capabilities as specified */
   pciConfigOutWord(pciBusNo, pciDevNo, pciFuncNo, PCI_CFG_COMMAND, (unsigned short) command);
-  
+  return 0;	
 }
 
 /* This function takes the entire 32 bit readback register value including bits 
@@ -2258,7 +2269,7 @@ int baseAddressRegisterSizeOfDecodeSpace(int returnval) {
 			tmp >>= 1;	
 		}
 	}
-		
+	return 0;	
 }
 
 int GetFrameAcqCount(void)
