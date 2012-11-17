@@ -20,7 +20,7 @@
 */
 
 /* Function prototypes that can be exported to top-half code */
-
+int reset_status(void);
 extern void	start_video(void);
 extern int	btvid_controller_config(void);
 extern void	connect_pci_int(int inum);
@@ -37,6 +37,7 @@ extern void	set_brightness(int b);
 extern void	set_contrast(int c);
 extern void	load_frame_mc(int fsize);
 extern void	full_reset(void);
+int intel_pci_config(void);
 
 
 /* Function prototypes for bottom-half debug and development */
@@ -185,7 +186,7 @@ extern int	dumpPCIStatusAndCommand(void);
 
 /*Test*/
 /*#define BTVID_MMIO_ADDR		0x08000000 */
-#define BTVID_MMIO_ADDR		0xfca00008 	/*Om- modified*/
+#define BTVID_MMIO_ADDR		0xfca00000 	/*Om- modified*/
 
 #define TIMING_GEN_REG		(BTVID_MMIO_ADDR | 0x00000084)
 

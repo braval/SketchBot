@@ -132,6 +132,9 @@
 #include "vmLib.h"   /* added to support */
 #include "iv.h"
 #include "taskLib.h"
+#include "wvLib.h"
+#include "string.h"
+
 
 /* VxWorks 5.4 PCI driver interface includes */
 #include "drv/pci/pciConfigLib.h"
@@ -178,7 +181,7 @@ UINT total_sync_tags = 0x0;
 int BT878INT; 	/* this will be set with the IRQ of the BT878 */
 
 UINT	sysVectorIRQ0		= INT_NUM_IRQ0;
-UINT	ir_table_addr		= NULL;
+UINT	ir_table_addr		= (int)NULL;
 UINT	frame_rdy_cnt 		= 0;
 int	replace_write_with_skip	= FALSE;
 int	acq_type		= NTSC_320_X_240;
@@ -708,7 +711,7 @@ void write_save_buffer(int bo)
       pWriteBuf++;
       *pWriteBuf =savebuffbyteptr[0];
       pWriteBuf++;
-     logMsg("%d\n", savebuffbyteptr[0]);
+    /* logMsg("%d\n", savebuffbyteptr[0]); */
 
       savebuffbyteptr+=4;
     }
@@ -748,7 +751,7 @@ UINT check_buffers(int fsize)
     }
     else if(fsize==0)
     {
-      for(j=0;j<7679;j++)
+      for(j=0;j<76800;j++)
         test |= frame_buffer[i][j];
     }
   }
@@ -766,11 +769,11 @@ void clear_buffers(int fsize)
 
   for(i=0;i<NUMFRAMES;i++)
   {
-    bzero(&(large_frame_buffer[i]),(307200*4));
-    bzero(&(frame_buffer[i]), (76800*4));
+    bzero((char*)&(large_frame_buffer[i]),(307200*4));
+    bzero((char*)&(frame_buffer[i]), (76800*4));
   }
 
-  bzero(&(test_buffer[0]),(320*4));
+  bzero((char*)&(test_buffer[0]),(320*4));
 
 }
 
@@ -1355,7 +1358,7 @@ void disable_capture(void)
 void enable_capture(void)
 {
   vdfc_capture();
-  logMsg("Leaving Capture enable\n");
+  /*logMsg("Leaving Capture enable\n");*/
 }
 
 
@@ -1542,7 +1545,7 @@ void start_acq(void)
 
    */
   PCI_WRITE(DMA_CTL_REG,0x0,0x0000000F);
-  logMsg("Leaving Acg Started\n");
+  /*logMsg("Leaving Acg Started\n");*/
 }
 
 
@@ -1640,7 +1643,7 @@ void pci_inta_isr(int param)
 
     current_frame = !current_frame;
 
-    /* Notify client that frame is ready */
+    /* Notify client that frame is  */
     semGive(frameRdy);
 
     /* Check the device status */
@@ -1710,7 +1713,7 @@ void activate(int fsize)
   start_acq();
 
   test_status();
-  logMsg("Leaving Activate\n");
+  /* logMsg("Leaving Activate\n");*/
 }
 
 
@@ -1753,10 +1756,10 @@ void btvid_drvr(void)
     frame_rdy_cnt++;
     logMsg("Frame ready count %d \n",frame_rdy_cnt,0,0,0,0,0);
     if(acq_type == NTSC_320_X_240)
-      bcopy(&(frame_buffer[current_frame][0]), save_buffer, (76800*4));
+      bcopy((char*)&(frame_buffer[current_frame][0]),(char*) save_buffer, (76800*4));
 
     if(acq_type == NTSC_320_X_240_GS)
-      bcopy(&(y8_frame_buffer[current_frame][0]), y8_save_buffer, (19200*4));
+      bcopy((char*)&(y8_frame_buffer[current_frame][0]),(char*) y8_save_buffer, (19200*4));
 	/* manipualate the buffer pointer */
 
 	if(pglobFnNewFrameRcvd)
@@ -1779,7 +1782,7 @@ void start_video_report(void (*pFnNewFrameRcvd)(unsigned char *))
 	{
 		pglobFnNewFrameRcvd = 0; /* zero out the new frame received function */
 	}
-	logMsg("Leaving start_video_report\n",0,0,0,0,0,0);
+	/*logMsg("Leaving start_video_report\n",0,0,0,0,0,0);*/
 }
 	
 
@@ -1800,11 +1803,11 @@ void start_video(void)
 
  	/******** Initialization and Test ********/
 	intel_pci_config();
-	logMsg("Leaving intel_pci_config \n");
+	/*logMsg("Leaving intel_pci_config \n"); */
 	
 	btvid_controller_config();
 
-	logMsg("Leaving btvid_controller_config \n");
+	/*logMsg("Leaving btvid_controller_config \n");*/
 	
 	test_status();
 
@@ -2277,3 +2280,16 @@ int GetFrameAcqCount(void)
 	return frame_acq_cnt;
 }
 
+void click()
+{
+	start_video();
+	activate(1);
+	set_mux(3);
+	reset_status();
+	write_save_buffer(0);	
+}
+
+void unclick()
+{
+	full_reset();
+}
