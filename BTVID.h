@@ -39,7 +39,7 @@ extern void	load_frame_mc(int fsize);
 extern void	full_reset(void);
 int intel_pci_config(void);
 
-
+SEM_ID S1;
 /* Function prototypes for bottom-half debug and development */
 
 extern int	btvid_probe(void);
@@ -47,7 +47,7 @@ extern UINT	find_int_routing_table(void);
 extern void	print_mc(int mc);
 extern int	test_status(void);
 extern void	intel_pci_status(void);
-extern void	write_save_buffer(int bo);
+extern void write_save_buffer(int bo);
 extern void	write_y8_save_buffer(void);
 extern UINT	check_buffers(int fsize);
 extern void	clear_buffers(int fsize);

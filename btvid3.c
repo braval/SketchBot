@@ -689,11 +689,12 @@ void write_save_buffer(int bo)
   int fd, i;
   char *savebuffbyteptr = (char *)&(save_buffer[0]);
   char *pWriteBuf;
+  
 
   wvEvent(1,0,0);	
 
   fd = open("/tgtsvr/testframe.ppm", O_RDWR|O_CREAT, 0644);
-  logMsg("Opned file to write\n", 0,0,0,0,0) ;
+  /*logMsg("Opned file to write\n", 0,0,0,0,0) ;*/
   write(fd,"P6\n",3);
   write(fd,"#test\n",6);
   write(fd,"320 240\n",8);
@@ -715,9 +716,12 @@ void write_save_buffer(int bo)
 
       savebuffbyteptr+=4;
     }
-    write(fd,SaveBuffer,3*320*240); /* write everything at once, speed it up a bit */
-    logMsg("if loop in write complete \n", 0,0,0,0,0) ;
+    
 
+    
+    write(fd,SaveBuffer,3*320*240); /* write everything at once, speed it up a bit */
+   /* logMsg("if loop in write complete \n", 0,0,0,0,0) ;*/
+   
   }
   else
   {
@@ -732,7 +736,7 @@ void write_save_buffer(int bo)
   }
   
   close(fd);
-
+  return;
 }
 
 
@@ -765,7 +769,7 @@ UINT check_buffers(int fsize)
 
 void clear_buffers(int fsize)
 {
-  int i,j;
+  int i;
 
   for(i=0;i<NUMFRAMES;i++)
   {
@@ -1752,9 +1756,11 @@ void btvid_drvr(void)
   while(1)
   {
     /* Await a activate command here */
+	
     semTake(frameRdy, WAIT_FOREVER);
+      
     frame_rdy_cnt++;
-    logMsg("Frame ready count %d \n",frame_rdy_cnt,0,0,0,0,0);
+   /* logMsg("Frame ready count %d \n",frame_rdy_cnt,0,0,0,0,0); */
     if(acq_type == NTSC_320_X_240)
       bcopy((char*)&(frame_buffer[current_frame][0]),(char*) save_buffer, (76800*4));
 
@@ -1766,7 +1772,7 @@ void btvid_drvr(void)
 	{ /* notify that a new frame was received */
 		(*pglobFnNewFrameRcvd)(&frame_buffer[current_frame][0]);
 	}
-		    
+	semGive(S1);	    
   }
 
 }
@@ -1788,11 +1794,6 @@ void start_video_report(void (*pFnNewFrameRcvd)(unsigned char *))
 
 void start_video(void)
 {
-
-	char temp;
-	int pciBusNo;
-  	int pciDevNo;
-  	int pciFuncNo;
 
 	pglobFnNewFrameRcvd = 0; /* zero out the new frame received function */
 	/* In order to see logmsg's you need to add stdout's file handle (1) */
@@ -2279,17 +2280,129 @@ int GetFrameAcqCount(void)
 {
 	return frame_acq_cnt;
 }
-
-void click()
+int capture_id;
+void init()
 {
+	S1 = semBCreate(SEM_Q_FIFO, SEM_EMPTY);
 	start_video();
 	activate(1);
 	set_mux(3);
-	reset_status();
-	write_save_buffer(0);	
+	reset_status();	
+	chalu();
+
+	
 }
 
 void unclick()
 {
 	full_reset();
+	taskDelete(capture_id );
+}
+
+void capture(void);
+
+void chalu(void)
+{
+	
+	if(capture_id = taskSpawn("capture", 51, 0, 4000, capture, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) == ERROR){
+		logMsg("capture task spawn failed\n"); 
+	 }
+	 else 
+		logMsg("capture task spawned\n"); 
+}
+
+unsigned char R[76800];
+unsigned char G[76800];
+unsigned char B[76800];
+/* Centroid Code */
+void capture(void)
+{
+    int fdout, i, j, inTarget=0;
+    unsigned int xCnt=0, xCntPrev=0, xCntPrevPrev=0, xCntSum, xEdgeL, xEdgeR, xCent, xCntMax=0;
+    unsigned int xCentFinal, yCentFinal;
+    unsigned char aveR, aveB, aveG;
+    int m;
+    unsigned char header[22];
+    unsigned char maxG = 255;
+    unsigned char minR = 0;
+    unsigned char minB = 0;
+    int r=0,g=1,b=2;   
+    char *savebuffbyteptr ;
+    wvEvent(1,0,0);	
+    
+    /*Reading R,G and B values*/
+    
+    
+while(1)
+{
+	semTake(S1,WAIT_FOREVER);
+    savebuffbyteptr = (char *)&(save_buffer[0]);
+    for(m=0;m<76800;m++)
+    {
+    	R[m] = savebuffbyteptr[2];
+    	G[m] = savebuffbyteptr[1];
+    	B[m] = savebuffbyteptr[0];
+    	savebuffbyteptr+=4;
+    }
+    
+   
+    /* Raster through image looking for target centroid*/
+    for(i=0; i<240; i++)
+    {
+        inTarget=0;
+        xCnt=0;
+
+        for(j=0; j<315; j++)
+        {
+            aveR = (R[(i*320)+j] + R[(i*320)+j+1] + R[(i*320)+j+2] +
+                    R[(i*320)+j+3] + R[(i*320)+j+4] + R[(i*320)+j+5]) / 6;
+            aveG = (G[(i*320)+j] + G[(i*320)+j+1] + G[(i*320)+j+2] +
+                    G[(i*320)+j+3] + G[(i*320)+j+4] + G[(i*320)+j+5]) / 6;
+            aveB = (B[(i*320)+j] + B[(i*320)+j+1] + B[(i*320)+j+2] +
+                    B[(i*320)+j+3] + B[(i*320)+j+4] + B[(i*320)+j+5]) / 6;
+
+       
+            /* entered target*/
+            if(!inTarget && (aveR > 200) )
+            {
+                inTarget=1;
+                xCnt=0;
+                xEdgeL=(unsigned int)j;
+                
+                
+            } 
+            else if(inTarget && (aveR < 200))
+            {
+            	
+                inTarget=0;
+                xEdgeR=(unsigned int)j;
+                xCent = xEdgeL + ((xEdgeR-xEdgeL)/2);
+                xCntSum = xCntPrevPrev+xCntPrev+xCnt;
+
+                if(xCntSum > xCntMax)
+                {
+                    xCntMax = xCntSum;
+                    xCentFinal = xCent;
+                    yCentFinal = i;
+                }
+
+                xCntPrevPrev=xCntPrev;
+                xCntPrev=xCnt;
+                xCnt=0;
+            }
+            else if(inTarget)
+            {
+                xCnt++;
+            }
+        }
+    }
+    if (xCentFinal!= 0 && yCentFinal != 0)
+    {
+    logMsg("xCentFinal = %d, yCentFinal = %d\n", xCentFinal, yCentFinal);
+    }
+    xCentFinal = 0;
+    yCentFinal = 0 ;
+
+}    
+	return;
 }
