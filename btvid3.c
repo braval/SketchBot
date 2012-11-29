@@ -149,6 +149,18 @@
 
 #include "btvid.h"
 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <stdio.h>
+#include <signal.h>
+#include "inetLib.h"
+#include "sockLib.h"
+#include "netinet/tcp.h"
+#include "ioLib.h"
+#include "wvLib.h"
 
 STATUS  pciLibInitStatus = NONE;    /* initialization done */
 int     pciConfigMech = NONE;       /* 1=mechanism-1, 2=mechanism-2 */
@@ -185,7 +197,7 @@ UINT	ir_table_addr		= (int)NULL;
 UINT	frame_rdy_cnt 		= 0;
 int	replace_write_with_skip	= FALSE;
 int	acq_type		= NTSC_320_X_240;
-
+int client_sock;
 
 UINT	int_errors_to_check = (
 				SCERR_INT	|
@@ -1693,6 +1705,7 @@ void full_reset(void)
   intel_pci_clear_status();
 
   reset_status();
+  close(client_sock);
 
 }
 
@@ -2288,8 +2301,9 @@ void init()
 	activate(1);
 	set_mux(3);
 	reset_status();	
+	tcp_init();
 	chalu();
-
+	
 	
 }
 
@@ -2326,7 +2340,8 @@ void capture(void)
     unsigned char maxG = 255;
     unsigned char minR = 0;
     unsigned char minB = 0;
-    int r=0,g=1,b=2;   
+    int r=0,g=1,b=2,x_prev,y_prev;   
+    int num_sets[2] = {555,666};
     char *savebuffbyteptr ;
     wvEvent(1,0,0);	
     
@@ -2396,13 +2411,101 @@ while(1)
             }
         }
     }
-    if (xCentFinal!= 0 && yCentFinal != 0)
+    num_sets[0] = xCentFinal;
+    num_sets[1] = yCentFinal;
+    if (xCentFinal!= x_prev && yCentFinal != y_prev)
     {
     logMsg("xCentFinal = %d, yCentFinal = %d\n", xCentFinal, yCentFinal);
+    send(client_sock, (char *)&num_sets, sizeof(int)*2, 0);
     }
-    xCentFinal = 0;
-    yCentFinal = 0 ;
+    x_prev = xCentFinal;
+    y_prev = yCentFinal;
+
 
 }    
 	return;
 }
+
+#define NSTRS 3
+#define MAX_IT 3
+#define LOCAL_PORT 2234
+
+char *strs[NSTRS] = {
+	"Jack be nimble.\n",
+	"Jack be quick.\n",
+	"Jack jump over the candlestick.\n"
+};
+
+extern int errno;
+extern void broken_pipe_handler();
+
+
+
+
+
+
+void tcp_init()
+{
+	 char c;
+	    FILE *fp;
+	    char hostname[64];
+	    int i, j, len;
+	    struct hostent *hp;
+	    struct sockaddr_in client_sockaddr;
+	    struct linger opt;
+	    int sockarg;
+	    unsigned short port;
+	 
+		/*gethostname(hostname, sizeof(hostname));*/
+
+		
+		if((client_sock=socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+			perror("client: socket");
+			exit(1);
+		}
+
+		client_sockaddr.sin_family = AF_INET;
+
+		client_sockaddr.sin_port = htons(1234);
+		/*client_sockaddr.sin_port = htons(LOCAL_PORT);*/
+		client_sockaddr.sin_addr.s_addr = inet_addr("172.21.74.42");
+
+	    /* discard undelivered data on closed socket */ 
+	    opt.l_onoff = 1;
+	    opt.l_linger = 0;
+
+	    sockarg = 1;
+
+	    setsockopt(client_sock, SOL_SOCKET, SO_LINGER, (char*) &opt, sizeof(opt));
+
+	    setsockopt(client_sock, SOL_SOCKET, SO_REUSEADDR, (char *)&sockarg, sizeof(int));
+
+	    if(connect(client_sock, (struct sockaddr*)&client_sockaddr, sizeof(client_sockaddr)) < 0) 
+	    {
+		perror("client: connect");
+		exit(1);
+	    }
+	    else
+	    {
+	        printf("CONNECTED TO REMOTE SERVER\n");
+	    }
+
+
+		signal(SIGPIPE, broken_pipe_handler);
+
+		fp = fdopen(client_sock, "r");
+
+	    
+		
+
+		
+
+}
+
+void broken_pipe_handler()
+{
+
+	printf("\nbroken pipe signal received\n");
+
+}
+
