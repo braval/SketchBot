@@ -198,7 +198,7 @@ UINT	frame_rdy_cnt 		= 0;
 int	replace_write_with_skip	= FALSE;
 int	acq_type		= NTSC_320_X_240;
 int client_sock;
-
+int *num_sets;
 UINT	int_errors_to_check = (
 				SCERR_INT	|
 				OCERR_INT	|
@@ -219,7 +219,7 @@ SEM_ID frameRdy;
 
 /* a global pointer to the frame received function */
 void (*pglobFnNewFrameRcvd) (unsigned char *pNewFrameBuffer);
-
+void tcp_init();
 
 PCI_DEV_BUS_NAME PCI_DEV[NUMDEVICES];
 
@@ -391,7 +391,7 @@ STATUS initializePCI_DEV(void) {
 	int i = 0;
 	
 
-	BT878INT = 10; /* as a default in ECEN5623, BT878 cards will use IRQ11 */
+	BT878INT = 11; /* as a default in ECEN5623, BT878 cards will use IRQ11 */
 	/*Om: modified to 10*/
 
 	for(i = 0; i < NUMDEVICES; i++) {
@@ -2341,7 +2341,7 @@ void capture(void)
     unsigned char minR = 0;
     unsigned char minB = 0;
     int r=0,g=1,b=2,x_prev,y_prev;   
-    int num_sets[2] = {555,666};
+   
     char *savebuffbyteptr ;
     wvEvent(1,0,0);	
     
@@ -2352,6 +2352,9 @@ while(1)
 {
 	semTake(S1,WAIT_FOREVER);
     savebuffbyteptr = (char *)&(save_buffer[0]);
+    num_sets = (int *)malloc(sizeof(int)*2);
+    int ret1 = 5;
+    int check1 = 0;
     for(m=0;m<76800;m++)
     {
     	R[m] = savebuffbyteptr[2];
@@ -2378,7 +2381,7 @@ while(1)
 
        
             /* entered target*/
-            if(!inTarget && (aveR > 200) )
+            if(!inTarget && (aveR > 80) )
             {
                 inTarget=1;
                 xCnt=0;
@@ -2386,7 +2389,7 @@ while(1)
                 
                 
             } 
-            else if(inTarget && (aveR < 200))
+            else if(inTarget && (aveR < 80))
             {
             	
                 inTarget=0;
@@ -2407,19 +2410,30 @@ while(1)
             }
             else if(inTarget)
             {
-                xCnt++;
+				xCnt++;
             }
         }
     }
     num_sets[0] = xCentFinal;
     num_sets[1] = yCentFinal;
-    if (xCentFinal!= x_prev && yCentFinal != y_prev)
+    
+    if((xCentFinal!=x_prev)&&(yCentFinal!=y_prev))
     {
     logMsg("xCentFinal = %d, yCentFinal = %d\n", xCentFinal, yCentFinal);
-    send(client_sock, (char *)&num_sets, sizeof(int)*2, 0);
+   
+ 
+	if(ret1>0)
+	{
+		int ret = send(client_sock,(char *)num_sets, sizeof(int)*2, 0);
+		logMsg("Sending return vaaalueee issss %d\n",ret);
+		ret = 0;
+	}
+		ret1 = recv(client_sock,(char *)&check1, sizeof(int), 0);
+		logMsg("Receving return vaaalueee issss %d and check shit is %d\n",ret1,check1);
+		x_prev = xCentFinal;
+		y_prev = yCentFinal;
+   
     }
-    x_prev = xCentFinal;
-    y_prev = yCentFinal;
 
 
 }    
@@ -2446,7 +2460,7 @@ extern void broken_pipe_handler();
 
 void tcp_init()
 {
-	 char c;
+	    char c;
 	    FILE *fp;
 	    char hostname[64];
 	    int i, j, len;
@@ -2455,7 +2469,8 @@ void tcp_init()
 	    struct linger opt;
 	    int sockarg;
 	    unsigned short port;
-	 
+	    
+	    int count_check = 5;
 		/*gethostname(hostname, sizeof(hostname));*/
 
 		
@@ -2468,7 +2483,7 @@ void tcp_init()
 
 		client_sockaddr.sin_port = htons(1234);
 		/*client_sockaddr.sin_port = htons(LOCAL_PORT);*/
-		client_sockaddr.sin_addr.s_addr = inet_addr("172.21.74.42");
+		client_sockaddr.sin_addr.s_addr = inet_addr("172.21.74.53");
 
 	    /* discard undelivered data on closed socket */ 
 	    opt.l_onoff = 1;
@@ -2480,6 +2495,8 @@ void tcp_init()
 
 	    setsockopt(client_sock, SOL_SOCKET, SO_REUSEADDR, (char *)&sockarg, sizeof(int));
 
+	    
+	    
 	    if(connect(client_sock, (struct sockaddr*)&client_sockaddr, sizeof(client_sockaddr)) < 0) 
 	    {
 		perror("client: connect");
@@ -2488,16 +2505,14 @@ void tcp_init()
 	    else
 	    {
 	        printf("CONNECTED TO REMOTE SERVER\n");
+	        
 	    }
 
-
-		signal(SIGPIPE, broken_pipe_handler);
+	 
+		signal(SIGPIPE, broken_pipe_handler);	
 
 		fp = fdopen(client_sock, "r");
-
-	    
 		
-
 		
 
 }
