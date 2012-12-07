@@ -40,6 +40,7 @@ extern void	full_reset(void);
 int intel_pci_config(void);
 
 SEM_ID S1;
+SEM_ID S8;
 /* Function prototypes for bottom-half debug and development */
 
 extern int	btvid_probe(void);
