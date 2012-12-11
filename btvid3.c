@@ -391,7 +391,7 @@ STATUS initializePCI_DEV(void) {
 	int i = 0;
 	
 
-	BT878INT = 11; /* as a default in ECEN5623, BT878 cards will use IRQ11 */
+	BT878INT = 10; /* as a default in ECEN5623, BT878 cards will use IRQ11 */
 	/*Om: modified to 10*/
 
 	for(i = 0; i < NUMDEVICES; i++) {
